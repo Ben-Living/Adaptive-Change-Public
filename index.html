@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Making sense of how we adapt · general version</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&display=swap">
+<style>
+html,body{height:100%}
+/* Warm editorial, after ben-preston.com. Stone is home; charcoal is the rare counterpoint.
+   Palette: stone, charcoal, ink, sage, gold, rust. Type: Fraunces 300 for headings, DM Sans for body.
+   Layout: one screen at a time, text left on a 34/66 split, the drawing right. */
+:root{
+  --stone:#EDE5D8;--stone-deep:#DDD3C3;--stone-soft:#F4EEE6;--charcoal:#1E1C19;--charcoal-soft:#2A2824;--ink:#2D2A26;
+  --text-stone:#F2EDE7;--muted:#8A7F72;--sage:#7A8B6F;--sage-light:#9EAD92;--gold:#B8956A;--gold-light:#CCA97F;--rust:#A05C3B;
+  --hair:rgba(45,42,38,.12);--hair-dark:rgba(242,237,231,.12);
+  --fh:'Fraunces',Georgia,serif;--fb:'DM Sans',system-ui,sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1);--ease-out:cubic-bezier(0,0,.2,1);
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased}
+body{background:var(--stone);color:var(--ink);font-family:var(--fb);font-size:17px;line-height:1.65;min-height:100vh}
+button{font-family:var(--fb);cursor:pointer;border:none;background:none;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.app{min-height:100vh;display:flex;flex-direction:column;position:relative}
+h1,h2,h3{font-family:var(--fh);font-weight:300;line-height:1.1;letter-spacing:-.025em;text-wrap:balance}
+h1{font-size:clamp(2.75rem,5.5vw,5rem);line-height:1.06;letter-spacing:-.035em}
+h2{font-size:clamp(1.9rem,3.2vw,2.75rem)}
+h3{font-size:1.5rem;letter-spacing:-.02em}
+em{font-style:italic;color:var(--gold)}
+.label{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--sage);font-weight:500}
+.muted{color:rgba(45,42,38,.68)}
+.small{font-size:.92rem;color:var(--muted);line-height:1.55}
+.q{font-family:var(--fh);font-style:italic;font-weight:300;letter-spacing:-.01em}
+/* top line */
+.topline{display:flex;justify-content:space-between;align-items:center;padding:.9rem clamp(1.5rem,5vw,4rem);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--hair);position:relative;z-index:5}
+.dark .topline{color:rgba(242,237,231,.5);border-bottom-color:var(--hair-dark)}
+.topline .sep{margin:0 .6em}
+.topline .about{font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;border-bottom:1px solid transparent;transition:color .3s,border-color .3s}
+.topline .about:hover{color:var(--sage);border-bottom-color:currentColor}
+.dark .topline .about:hover{color:var(--sage-light)}
+.site{font-size:.7rem;letter-spacing:.1em;text-transform:lowercase;color:var(--muted);opacity:.55;text-decoration:none;transition:opacity .3s,color .3s}
+.site:hover{opacity:1;color:var(--sage)}
+.dark .site{color:var(--text-stone);opacity:.35}.dark .site:hover{opacity:.9;color:var(--sage-light)}
+@media (max-width:640px){.site{display:none}}
+/* stage */
+.stage{flex:1;position:relative;display:grid;grid-template-columns:minmax(0,34fr) minmax(0,66fr);gap:clamp(2rem,5vw,5rem);padding:clamp(1.5rem,3.5vh,3rem) clamp(1.5rem,5vw,4rem) 1rem;overflow:hidden}
+.stage.full{grid-template-columns:minmax(0,1fr)}
+.stage.full .canvas{display:none}
+.dark{background:var(--charcoal);color:var(--text-stone)}
+.dark .muted{color:rgba(242,237,231,.62)}
+.dark .small{color:rgba(242,237,231,.5)}
+.dark .label{color:var(--gold-light)}
+@media (max-width:900px){.stage{grid-template-columns:minmax(0,1fr)}}
+canvas.topo{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:0;transition:opacity 1s var(--ease-out)}
+canvas.topo.show{opacity:1}
+.panel{position:relative;z-index:1;display:flex;flex-direction:column;gap:1rem;min-height:0;overflow-y:auto;padding-right:.5rem}
+.panel>*{animation:rv 1s var(--ease-out) both}
+.panel>*:nth-child(2){animation-delay:.08s}.panel>*:nth-child(3){animation-delay:.16s}.panel>*:nth-child(4){animation-delay:.24s}.panel>*:nth-child(5){animation-delay:.32s}.panel>*:nth-child(n+6){animation-delay:.4s}
+@keyframes rv{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.panel p{max-width:60ch;font-size:1.05rem}
+.stage.full .panel{max-width:1320px;width:100%;margin:0 auto}
+.canvas{position:relative;z-index:1;min-height:0;display:flex;align-items:center;justify-content:center}
+svg#cv{width:100%;height:100%;max-height:calc(100vh - 175px)}
+/* bottom bar */
+.bar{position:relative;z-index:5;display:flex;align-items:center;gap:1.25rem;padding:.8rem clamp(1.5rem,5vw,4rem) 1rem;border-top:1px solid var(--hair)}
+.dark .bar{border-top-color:var(--hair-dark)}
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem 1.3rem;font-size:.78rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;border:1px solid rgba(45,42,38,.35);background:transparent;color:var(--ink);transition:background .3s,color .3s,border-color .3s}
+.btn:hover:not(:disabled){background:var(--charcoal);color:var(--stone);border-color:var(--charcoal)}
+.btn:disabled{opacity:.3;cursor:default}
+.dark .btn{border-color:rgba(242,237,231,.4);background:transparent;color:var(--stone)}
+.dark .btn:hover:not(:disabled){background:var(--stone);color:var(--charcoal);border-color:var(--stone)}
+.btn--gold{background:var(--gold);border-color:var(--gold);color:var(--charcoal)}
+.btn--gold:hover{background:transparent;color:var(--gold)}
+.lbl{flex:1;text-align:center;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.dark .dark .lbl{color:rgba(242,237,231,.5)}
+.pips{display:flex;gap:7px;align-items:center}
+.pips button{width:18px;height:2px;background:rgba(45,42,38,.25);padding:0;transition:background .3s,height .3s}
+.pips button.on{background:var(--gold);height:3px}
+.dark .pips button{background:rgba(242,237,231,.25)}.dark .pips button.on{background:var(--gold)}
+/* hero */
+.hero{display:flex;flex-direction:column;justify-content:center;gap:2rem;flex:1;max-width:720px}
+.hero p.lede{font-size:1.15rem;color:rgba(45,42,38,.68);max-width:52ch}
+.hero .note{font-size:.88rem;color:var(--muted);border-top:1px solid var(--hair);padding-top:1rem;max-width:none}
+.hero .note b{color:var(--ink);font-weight:500}
+.marq{overflow:hidden;white-space:nowrap;font-family:var(--fh);font-weight:300;font-style:italic;font-size:clamp(1.4rem,3vw,2.2rem);color:var(--gold);letter-spacing:-.01em;line-height:1;padding-block:.2em}
+.mq{display:inline-flex;animation:mq 80s linear infinite}
+.mq span{padding-left:.5em}
+@keyframes mq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+/* framing */
+.five{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(1rem,2.5vw,2.5rem);border-top:1px solid var(--hair);padding-top:1.5rem}
+@media (max-width:1100px){.five{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:620px){.five{grid-template-columns:minmax(0,1fr)}}
+.st{display:flex;flex-direction:column;gap:.9rem}
+.st .n{font-family:var(--fh);font-size:3rem;font-weight:300;line-height:1;color:rgba(45,42,38,.14);letter-spacing:-.04em}
+.st .s{font-family:var(--fh);font-size:1.3rem;line-height:1.3;letter-spacing:-.015em}
+.tl{align-self:flex-start;font-size:.86rem;letter-spacing:.04em;color:var(--sage);border-bottom:1px solid var(--sage-light);padding-bottom:2px;transition:color .3s,border-color .3s}
+.tl:hover{color:var(--rust);border-color:var(--rust)}
+.essay2{columns:2 380px;column-gap:clamp(2rem,5vw,4.5rem);border-top:1px solid var(--hair);padding-top:1.4rem}
+.essay2 h3{font-size:1.55rem;margin:0 0 .7rem;break-after:avoid}
+.essay2 h3:not(:first-child){margin-top:1.6rem}
+.essay2 p{font-size:1.02rem;line-height:1.65;margin-bottom:.9rem;break-inside:avoid;color:rgba(45,42,38,.8)}
+@media (max-width:900px){.essay2{columns:1}}
+.by{font-family:var(--fb);font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:1.6rem}
+.by a{color:inherit;text-decoration:none;border-bottom:1px solid var(--hair);padding-bottom:2px}
+.by a:hover{color:var(--sage)}
+.dark .by{color:rgba(242,237,231,.55)}.dark .by a{border-color:rgba(242,237,231,.2)}.dark .by a:hover{color:var(--sage-light)}
+/* figures */
+.figs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--hair);border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+@media (max-width:860px){.figs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.fig{background:var(--stone);padding:1.4rem 1.2rem;display:flex;flex-direction:column;gap:.35rem}
+.fig .n{font-family:var(--fh);font-size:clamp(2.2rem,4vw,3.4rem);font-weight:300;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.aim{background:var(--charcoal);color:var(--text-stone);padding:2rem clamp(1.5rem,3vw,2.5rem);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:2rem;align-items:center;position:relative;overflow:hidden}
+@media (max-width:860px){.aim{grid-template-columns:minmax(0,1fr)}}
+.aim blockquote{font-family:var(--fh);font-style:italic;font-weight:300;font-size:clamp(1.4rem,2.6vw,2.1rem);line-height:1.3;letter-spacing:-.02em;border-left:3px solid var(--gold);padding-left:1.25rem}
+.aim p{color:rgba(242,237,231,.65);font-size:1rem}
+.aim .label{color:var(--gold-light)}
+/* panel bits */
+.ro{border-top:1px solid var(--hair);padding-top:.9rem;min-height:118px;display:flex;flex-direction:column;gap:.4rem}
+.dark .ro{border-top-color:var(--hair-dark)}
+.ro .t{font-family:var(--fh);font-style:italic;font-weight:300;font-size:1.3rem;line-height:1.35;letter-spacing:-.015em}
+.key{display:flex;flex-wrap:wrap;gap:.5rem 1.2rem;font-size:.86rem;color:var(--muted)}
+.key span{display:inline-flex;gap:.5rem;align-items:center}
+.key i{width:13px;height:13px;border-radius:50%;display:inline-block;background:var(--sage)}
+.key i.miss{background:var(--rust)}.key i.nf{background:var(--muted);opacity:.7}.key i.n{background:var(--charcoal-soft)}
+.dark .key i{background:var(--sage-light)}.dark .key i.miss{background:#C9825F}.dark .key i.nf{background:var(--muted)}
+table.who{border-collapse:collapse;font-size:.95rem;width:100%;max-width:340px}
+table.who td{padding:.3rem 0;border-bottom:1px solid var(--hair)}table.who td:last-child{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.todo{border:1px dashed rgba(138,127,114,.6);color:var(--muted);padding:.55rem .8rem;font-size:.88rem;max-width:60ch}
+.clist{display:flex;flex-direction:column;border-top:1px solid var(--hair)}
+.clist button{display:grid;grid-template-columns:34px minmax(0,1fr);gap:.6rem;align-items:baseline;text-align:left;border-bottom:1px solid var(--hair);padding:.55rem .2rem;font-size:1rem;transition:background .2s}
+.clist button:hover{background:var(--stone-soft)}
+.clist b{font-family:var(--fh);font-weight:300;color:var(--gold);font-size:1.2rem}
+.card{border-top:1px solid var(--hair);padding:.9rem 0 .4rem;text-align:left;display:flex;flex-direction:column;gap:.35rem;transition:background .2s}
+.card:hover{background:var(--stone-soft)}
+.card .q{font-size:1.1rem;line-height:1.35}
+.card small{font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+/* svg */
+.layer{opacity:0;transition:opacity .8s var(--ease-out);pointer-events:none}
+svg[data-s="5"] #L_wheel,svg[data-s="6"] #L_wheel,svg[data-s="7"] #L_wheel,svg[data-s="8"] #L_wheel,svg[data-s="9"] #L_wheel{opacity:1;pointer-events:auto}
+svg[data-s="6"] #L_nf,svg[data-s="7"] #L_nf,svg[data-s="8"] #L_nf,svg[data-s="9"] #L_nf{opacity:1}
+svg[data-s="10"] #L_fig{opacity:1;pointer-events:auto}
+svg[data-s="11"] #L_cols{opacity:1}
+svg[data-s="5"] .fewt{display:none}
+.wedge{fill:#F4EEE6;stroke:rgba(45,42,38,.45);stroke-width:1;cursor:pointer;transition:fill .2s}
+.wedge:hover{fill:#E6DCCB}
+.wedge.none{fill:#EDE5D8;stroke-dasharray:4 5}
+.wn{font-family:var(--fh);font-size:24px;font-weight:300;fill:#B8956A}
+.wl{font-family:var(--fb);font-size:18px;font-weight:500;fill:#2D2A26;letter-spacing:.02em}
+.fewt{font-family:var(--fb);font-size:14px;fill:#8A7F72;letter-spacing:.08em;text-transform:uppercase}
+.cap{font-family:var(--fb);font-size:15px;fill:#8A7F72}
+.capb{font-family:var(--fb);font-size:13px;fill:#7A8B6F;letter-spacing:.14em;text-transform:uppercase;font-weight:500}
+.ft{font-family:var(--fh);font-style:italic;font-weight:300;font-size:21px;fill:#2D2A26}
+.fbox{fill:#F4EEE6;stroke:rgba(45,42,38,.2);cursor:pointer;transition:fill .2s}.fbox:hover{fill:#E6DCCB}
+.ch{font-family:var(--fh);font-weight:300;font-size:26px;fill:#F2EDE7;letter-spacing:-.02em}.ct{font-family:var(--fb);font-size:13px;fill:#CCA97F;letter-spacing:.14em;text-transform:uppercase;font-weight:500}
+.dark .cap{fill:rgba(242,237,231,.5)}
+.d{stroke-width:2.5;cursor:pointer;transition:transform 1.1s var(--ease),opacity .7s,fill .7s,stroke .7s}
+.d.n{fill:#2A2824;stroke:#2A2824}.d.work{fill:#7A8B6F;stroke:#7A8B6F}.d.miss{fill:#A05C3B;stroke:#A05C3B}.d.nf{fill:#B5A992;stroke:#B5A992}
+.dark .d.work{fill:#9EAD92;stroke:#9EAD92}.dark .d.miss{fill:#C9825F;stroke:#C9825F}.dark .d.nf{fill:#8A7F72;stroke:#8A7F72}
+.d:hover{stroke:#B8956A;stroke-width:4}
+@media (prefers-reduced-motion:reduce){.d,.layer,canvas.topo{transition:none}.mq{animation:none}.panel>*{animation:none}}
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(30,28,25,.55);z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(620px,100%);background:var(--stone-soft);color:var(--ink);z-index:41;overflow-y:auto;padding:1.6rem 1.8rem 4rem;display:flex;flex-direction:column;gap:1.1rem;box-shadow:-20px 0 60px rgba(30,28,25,.25)}
+.drawer .x{align-self:flex-end;border:1px solid var(--ink);width:38px;height:38px;font-size:1rem;transition:background .3s,color .3s}
+.drawer .x:hover{background:var(--charcoal);color:var(--stone)}
+.drawer h2{font-size:1.9rem}
+.drawer a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--gold);transition:color .3s}.drawer a:hover{color:var(--gold)}
+.drawer dl{display:grid;grid-template-columns:minmax(0,160px) minmax(0,1fr);gap:.7rem 1.2rem;border-top:1px solid var(--hair);padding-top:1rem}
+.drawer dt{font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--sage);font-weight:500;padding-top:.2rem}
+.drawer dd{font-size:1rem}
+.sub{font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--sage);font-weight:500;margin-top:.4rem}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.4rem}
+@media (max-width:560px){.two{grid-template-columns:minmax(0,1fr)}}
+.bq{display:block;width:100%;text-align:left;border-left:2px solid var(--rust);padding:.3rem 0 .3rem .9rem;margin-bottom:.8rem;transition:background .2s}
+.bq.work{border-left-color:var(--sage)}
+.bq:hover{background:var(--stone)}
+.bq .q{font-size:1.08rem;line-height:1.35;display:block}
+.bq small{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:.25rem}
+.drawer table{border-collapse:collapse;font-size:.92rem}
+.drawer td,.drawer th{padding:.25rem 1rem .25rem 0;text-align:left;border-bottom:1px solid var(--hair)}
+.drawer th{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--sage);font-weight:500}
+.essay p{margin-bottom:1rem;line-height:1.7;font-size:1.05rem;max-width:62ch}
+.lb{border-bottom:1px solid var(--sage-light);color:var(--sage);text-align:left;transition:color .3s,border-color .3s}
+.lb:hover{color:var(--rust);border-color:var(--rust)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <div class="topline"><span>Prototype · invented data<span class="sep">·</span><button type="button" class="about" id="about">About this page</button></span><span id="toplbl"></span></div>
+  <main class="stage" id="stage"><canvas class="topo" id="topo" aria-hidden="true"></canvas>
+    <div class="panel" id="panel"></div>
+    <div class="canvas"><svg id="cv" viewBox="0 0 1000 620" data-s="1" role="img" aria-label="Observations shown as dots"></svg></div>
+  </main>
+  <div class="bar"><button type="button" class="btn" id="prev">← Back</button><div class="pips" id="pips"></div><span class="lbl" id="lbl"></span><a class="site" href="https://www.ben-preston.com" target="_blank" rel="noopener">ben-preston.com</a><button type="button" class="btn" id="next">Next →</button></div>
+</div>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden role="dialog" aria-modal="true" aria-label="Detail"></aside>
+<script>
+const LEVELS=["Person","Organisation","Clients and communities"];
+const LENS=[
+ {k:"Coupling",plain:"Noticing and responding",q:"When something changed for a client, a colleague or a place, did anyone notice and act on it?",lo:"Nobody noticed or acted",hi:"Noticed and acted",exLo:"They deliver the brief. They never question it.",exHi:"We wrote the hand-over with the operators, not for them."},
+ {k:"Flow",plain:"Getting things to where they are needed",q:"Did the person, the answer, the decision or the lesson reach the place where it was needed?",lo:"It got stuck",hi:"It got there quickly",exLo:"A request for a specialist from another unit waited three weeks for an answer.",exHi:"I posted a question and a specialist in another country replied that afternoon."},
+ {k:"Value-adding",plain:"Leaving others more capable",q:"Afterwards, could the other people do more for themselves than before?",lo:"Others could do no more than before",hi:"Others could do more",exLo:"I reuse the last design. It is safe and it fits the fee.",exHi:"Their team trained ours for six weeks. We have not needed to call them since."},
+ {k:"Coherence",plain:"Pulling the same way",q:"Was the thing that was good for the person also good for the unit and for the whole firm?",lo:"Good for one, bad for the rest",hi:"Good for all three",exLo:"If I lend my best hydrologist to another region, my numbers drop and theirs rise.",exHi:"The group bonus made the whole firm’s result feel like my business."}
+];
+const COND=[null,
+ {a:"People act for a group only when they know that they belong to it.",n:"People know what the group is and what it is for",r:"Clearly defined boundaries",w:"The identity of the group is clear to its members."},
+ {a:"When one member gains at a cost to the others, members stop acting for the group.",n:"Effort and reward land in the same place",r:"Proportional equivalence between benefits and costs",w:"Members are rewarded for their contributions. The paper says unfair inequality “poisons collective efforts”."},
+ {a:"People work for goals that they have agreed. A decision made by a few can serve the few.",n:"People have a say in decisions that affect them",r:"Collective-choice arrangements",w:"The paper says people “will work hard for group goals that they have agreed upon”."},
+ {a:"A group cannot correct what it cannot see.",n:"Helpful and unhelpful behaviour can be seen",r:"Monitoring",w:"Behaviour that undermines the group can be noticed at low cost by its members."},
+ {a:"A small early correction costs less than a large late one.",n:"Breaking an agreed rule gets a small response first",r:"Graduated sanctions",w:"The paper says a “gentle reminder is sufficient” in most cases, with stronger steps held in reserve."},
+ {a:"A disagreement that is not settled fairly becomes a reason to stop cooperating.",n:"Disagreements are settled quickly and fairly",r:"Conflict resolution mechanisms",w:"Conflicts are resolved quickly, in ways members see as fair."},
+ {a:"The people closest to the work can fit it to local conditions. A rule from outside often does not fit.",n:"Teams can decide how to do their own work",r:"Minimal recognition of rights to organize",w:"The paper says externally imposed rules “are unlikely to be adapted to local circumstances”."},
+ {a:"Units, regions and clients must coordinate at the right scale. If they do not, each one adapts alone.",n:"Groups coordinate well with each other",r:"Appropriate coordination among relevant groups",w:"Groups that are part of a larger system coordinate at the right scale. This includes units, regions, clients and communities."}
+];
+/* groups: base = [coupling, flow, value-adding, coherence], 0 = left end, 100 = right end */
+const P=[
+{id:9,name:"Clients choose on lowest price, so bids leave no time for learning.",level:2,dir:"miss",c:[8],base:[30,35,25,20],protects:"The unit’s order book in a slow market.",test:"On one bid, price in a fixed number of hours for review and learning, and tell the client why."},
+{id:2,name:"Units are rewarded on their own billed hours, so they keep skilled people to themselves.",level:1,dir:"miss",c:[2,8],base:[42,18,36,10],protects:"A unit manager’s ability to meet the unit’s utilisation target.",test:"For one quarter, credit a loaned specialist’s hours to both units."},
+{id:3,name:"Engineers repeat known solutions and stop proposing better ones.",level:0,dir:"miss",c:[7],base:[18,48,18,32],protects:"The engineer from blame for an overrun.",test:"On one project, fund one alternative design option and present both to the client."},
+{id:1,name:"Lessons from a project stay inside the team that ran it.",level:1,dir:"miss",c:[4],base:[36,8,30,44],protects:"The team’s standing with regional leaders.",test:"Three project reviews are presented to another region within one quarter."},
+{id:8,name:"People stop raising risks after the first refusal.",level:0,dir:"miss",c:[6],base:[26,22,42,24],protects:"The person from being seen as difficult.",test:"For one month, one leader replies in writing to every risk raised."},
+{id:7,name:"Leaders learn of project problems from the client first.",level:1,dir:"miss",c:[4],base:[14,14,46,48],protects:"The project team from early scrutiny.",test:"Add one question to the monthly report: what would the client say is going wrong?"},
+{id:4,name:"Client feedback arrives at project close and changes nothing.",level:2,dir:"miss",c:[8],base:[10,30,34,52],protects:"Not yet known.",test:"On two projects, ask the client for feedback at the midpoint and report what changed."},
+{id:5,name:"Some teams leave the client’s own staff able to run what was built.",level:2,dir:"work",c:[8],base:[70,70,92,76],protects:"",test:"Ask the two teams what made this possible, and what would stop it."},
+{id:10,name:"The group bonus is starting to change what people pay attention to.",level:1,dir:"work",c:[2,1],base:[60,60,60,88],protects:"",test:"Open each unit meeting for one quarter with the group result, then ask what changed."},
+{id:6,name:"Senior specialists answer questions from any office within a day.",level:0,dir:"work",c:[1],base:[66,90,80,62],protects:"",test:"Ask who else does this, and what it costs them."},
+{id:11,name:"Younger staff say the kind of work is why they stay.",level:0,dir:"work",c:[1],base:[55,50,76,70],protects:"",test:"Ask ten more people in their first five years the same question."}
+];
+const RAW=[
+[1,9,"We win work by being cheapest, so nobody has time to think.","Said","Bid manager","2 Sep"],
+[2,9,"Three of the last four bids in one unit were priced below the unit’s own cost estimate.","Measured","Bid records, one unit","9 Sep"],
+[3,9,"Price carries most of the score. That is the rule we are given.","Said","Client procurement lead","11 Sep"],
+[4,2,"If I lend my best hydrologist to another region, my numbers drop and theirs rise.","Said","Unit manager","3 Sep"],
+[5,2,"A request for a specialist from another unit waited three weeks for an answer.","Seen","Resourcing meeting","10 Sep"],
+[6,2,"The group bonus is new. My manager still talks only about our unit’s utilisation.","Said","Senior engineer","15 Sep"],
+[7,2,"We moved two people across units for the rail bid last month and nobody objected.","Said","Regional director","17 Sep",1],
+[8,3,"I suggested a different approach once. I was told there were no hours for it.","Said","Graduate engineer","4 Sep"],
+[9,3,"I reuse the last design. It is safe and it fits the fee.","Said","Principal engineer","8 Sep"],
+[10,3,"In a design review, no one questioned the brief.","Seen","Design review","16 Sep"],
+[11,3,"Our senior specialists publish new methods every year.","Said","Technical director","18 Sep",1],
+[12,1,"We held a review after the overrun. The notes are on our team drive.","Said","Project manager","5 Sep"],
+[13,1,"I heard about that overrun from a friend, not from any system.","Said","Engineer, another region","12 Sep"],
+[14,1,"A lessons register exists. Its newest entry is from last year.","Seen","Shared register","14 Sep"],
+[15,1,"My practice runs an open review call every month. People from every region join.","Said","Practice lead","19 Sep",1],
+[16,8,"I stopped raising risks because nothing happened when I did.","Said","Project director","2 Sep"],
+[17,8,"I was told the client would not pay for that, so I dropped it.","Said","Engineer","9 Sep"],
+[18,8,"People bring me problems late. I do not know why.","Said","Commercial manager","22 Sep"],
+[19,7,"The first I heard of the delay was a call from the client.","Said","Regional leader","7 Sep"],
+[20,7,"The monthly report has no place to say a project is in trouble.","Said","Project manager","15 Sep"],
+[21,7,"A project status sheet showed green in the month before a claim.","Seen","Project records","21 Sep"],
+[22,4,"They deliver the brief. They never question it.","Said","Client project sponsor","10 Sep"],
+[23,4,"We send a survey at close-out. I have not seen the results used.","Said","Account lead","16 Sep"],
+[24,4,"Close-out surveys came back for a minority of projects in one unit.","Measured","Survey records, one unit","23 Sep"],
+[25,5,"Their team trained ours for six weeks. We have not needed to call them since.","Said","Client operations manager","11 Sep"],
+[26,5,"We wrote the hand-over with the operators, not for them.","Said","Project lead","17 Sep"],
+[27,5,"Client staff presented part of the final design review themselves.","Seen","Design review","24 Sep"],
+[28,6,"I posted a question and a specialist in another country replied that afternoon.","Said","Graduate engineer","8 Sep"],
+[29,6,"The practice network is the first place I ask.","Said","Engineer","18 Sep"],
+[32,10,"The group bonus made the whole firm’s result feel like my business.","Said","Graduate engineer","19 Sep"],
+[33,10,"For the first time I looked at another region’s numbers and cared.","Said","Unit manager","23 Sep"],
+[34,10,"A team meeting opened with the group result before the unit result.","Seen","Team meeting","26 Sep"],
+[35,11,"I stay because the work matters to places I care about.","Said","Graduate engineer","22 Sep"],
+[36,11,"Pay is better elsewhere. I am here for the kind of projects.","Said","Engineer, three years in","24 Sep"]
+];
+/* lone observations: placed by hand */
+const LONE=[
+{id:30,t:"Answering those questions is not in my targets. I do it anyway.",k:"Said",s:"Senior specialist",d:"25 Sep",level:0,v:[60,86,88,14],kind:"Works in one place",why:"One specialist does useful work that the targets do not count. If others do the same, the organisation depends on effort it does not record.",ask:"What lets this person do it, and what would make them stop?",next:"Try it in one place: count this work in the targets of one practice.",x:{2:"miss",1:"work"}},
+{id:40,t:"A client asked whether we could be paid on how the asset performs after ten years, not on hours.",k:"Said",s:"Client asset director",d:"18 Sep",level:2,v:[48,56,86,82],kind:"Possible first sign",why:"One client asked for a different way to pay. If more clients ask, the fee model must change.",ask:"Who else hears this from clients, and in which markets?",next:"Ask more people: five account leads.",x:{8:"work"}},
+{id:41,t:"Two graduates built a tool that cut a week from a model run. Nobody asked them to, and nobody has asked about it since.",k:"Said",s:"Team leader",d:"21 Sep",level:0,v:[78,10,82,34],kind:"Works in one place",why:"Two graduates saved one week of work on each model run. No other team uses the tool. Other teams could use it now.",ask:"How many tools like this exist that no other team knows about?",next:"Try it in one place: one practice asks its teams to show what they have built.",x:{4:"miss",7:"work"}},
+{id:42,t:"I turned down a project because I did not think it would leave the community better off. My director backed me.",k:"Said",s:"Associate",d:"23 Sep",level:2,v:[80,60,95,90],kind:"Works in one place",why:"One associate refused a project for the sake of a community, and a director agreed. This shows the stated purpose can decide a real case.",ask:"What made it safe to refuse, and would it be safe in another unit?",next:"Ask more people: has anyone else done this?",x:{7:"work"}},
+{id:43,t:"At my last firm we would have lost the client over this. Here nobody seemed worried.",k:"Said",s:"New joiner, six weeks in",d:"26 Sep",level:1,v:[8,40,30,56],kind:"Possible first sign",why:"A new joiner saw a risk to a client that no other observation mentions. If the risk is real, the cost arrives later.",ask:"What do new joiners notice in their first weeks that other staff did not mention?",next:"Watch: ask every new joiner at six weeks.",x:{4:"miss"}}
+];
+const jit=(id,i)=>(((id*37+i*53)%23)-11);
+const clamp=v=>Math.max(4,Math.min(96,v));
+const RAW2=[
+[50,2,"My best people are booked on my own jobs first. That is how I am measured.","Said","Unit manager, another region","30 Nov","Often"],
+[51,2,"I asked another office for help and was told to raise a cross-charge first.","Said","Project engineer","2 Dec","Often"],
+[52,9,"We removed the review stage from the bid to get under the price.","Said","Bid writer","1 Dec","Often"],
+[53,3,"There is a standard detail for this. Nobody asks if it is still the best one.","Said","Engineer","28 Nov","Always"],
+[54,3,"I proposed a lower-carbon option. The answer was: not on this fee.","Said","Senior engineer","3 Dec","Often"],
+[55,1,"Each region has its own lessons folder. I cannot open the others.","Said","Project manager","27 Nov","Always"],
+[56,8,"The last person who objected to a programme was moved off the job.","Said","Engineer","4 Dec","Rarely"],
+[57,8,"I raise a thing once. After that I leave it.","Said","Senior technician","29 Nov","Often"],
+[58,7,"Bad news goes up the line more slowly than good news.","Said","Associate","2 Dec","Often"],
+[59,4,"Nobody from the firm asked how the asset performed after hand-over.","Said","Client asset manager","5 Dec","Always"],
+[60,5,"They left us a manual that our own staff helped to write.","Said","Client maintenance lead","1 Dec","Rarely"],
+[61,10,"My team now asks how the other regions are doing.","Said","Team leader","3 Dec","Rarely"],
+[62,10,"The bonus is too small to change what I do each day.","Said","Engineer","4 Dec","Often",1],
+[63,6,"I got three answers from three countries in one day.","Said","Graduate engineer","28 Nov","Often"],
+[64,11,"I chose this firm over a higher offer because of the water work.","Said","Graduate engineer","30 Nov","Often"],
+[65,11,"If the projects change, I will leave.","Said","Engineer, four years in","5 Dec","Rarely"]
+];
+LONE.push(
+{id:70,st:2,freq:"First time",by:"the person who gave the observation",t:"The client’s own engineers now check our drawings with software before they pay the invoice.",k:"Said",s:"Client engineer",d:"4 Dec",level:2,v:[18,56,44,50],kind:"Possible first sign",why:"One client now checks the work by machine. If more clients do this, errors that passed before will delay payment.",ask:"Which other clients check drawings this way?",next:"Ask more people: ten client contacts.",x:{8:"miss"},vsr:["The client bought new software this year.","It saves the client money on each invoice.","Client staff talk to each other across projects."]},
+{id:71,st:2,freq:"Always",by:"the person who gave the observation",t:"Three of us from different units meet every Friday to tell each other what went wrong. Nobody asked us to.",k:"Said",s:"Senior engineer",d:"2 Dec",level:1,v:[72,86,80,76],kind:"Works in one place",why:"Three people share failures across units each week. The lessons register does not do this. Other units could copy the meeting now.",ask:"What makes it safe for these three to share failures?",next:"Try it in one place: one more region starts the same meeting.",x:{4:"work",8:"work"},vsr:["Three people who trained together started it.","They find it useful. It costs thirty minutes each week.","It has not spread. No one outside the three knows about it."]}
+);
+LONE.push({id:72,st:3,freq:"First time",by:"the person who gave the observation",t:"A client asked us to train their staff as part of the fee. They said they heard about it from another client.",k:"Said",s:"Client director",d:"14 May",level:2,v:[74,68,90,80],kind:"Possible first sign",why:"One client asked for the hand-over method by name. This is the first observation of a client that asks for it.",ask:"Do other clients know about the hand-over method?",next:"Ask more people: five client contacts.",x:{8:"work"},vsr:["Two project teams used the method in 2026.","Clients tell each other about it.","It spread from one client to another without action by the firm."]});
+const RAW3=[
+[80,2,"I lent two people to another unit. Their hours still counted for my unit.","Said","Unit manager","6 May","Often",1],
+[81,2,"A request for a specialist now gets an answer in days.","Said","Resourcing lead","8 May","Often",1],
+[82,2,"One unit still refuses loans in the last month of the quarter.","Said","Project engineer","12 May","Rarely"],
+[83,7,"The new question in the monthly report showed a problem on my job in week three.","Said","Project manager","7 May","Often",1],
+[84,7,"I now hear about trouble from my own teams first.","Said","Regional leader","13 May","Often",1],
+[85,8,"I raised a risk and got a written reply in the same week.","Said","Engineer","5 May","Often",1],
+[86,8,"People in my team raise more things now. Some are small.","Said","Project director","9 May","Often",1],
+[87,8,"In my region nothing has changed. I raise a thing once.","Said","Senior technician","14 May","Often"],
+[88,6,"Answers to network questions are now in my targets.","Said","Senior specialist","6 May","Always"],
+[89,6,"I still get answers within a day.","Said","Graduate engineer","11 May","Often"],
+[90,9,"We lost a bid again by a small difference in price.","Said","Bid manager","8 May","Often"],
+[91,9,"The scoring rules of the client have not changed.","Said","Bid writer","12 May","Always"],
+[92,3,"One project paid for a second design option. The client chose it.","Said","Senior engineer","7 May","First time",1],
+[93,3,"Most jobs still have no hours for a second option.","Said","Engineer","13 May","Often"],
+[94,1,"Three project reviews were presented to another region this quarter.","Said","Practice lead","9 May","Rarely",1],
+[95,1,"The lessons folders are still separate.","Said","Project manager","14 May","Always"],
+[96,4,"One client gave feedback at the midpoint. We changed the programme because of it.","Said","Account lead","6 May","First time",1],
+[97,4,"The close-out surveys are still not used.","Said","Account lead","12 May","Often"],
+[98,5,"The hand-over method was used on a third project.","Said","Project lead","8 May","Rarely"],
+[99,5,"Our operators ran the plant alone from the first day.","Said","Client operations manager","13 May","Rarely"],
+[100,10,"The group result is the first item in our meeting each month.","Said","Team leader","5 May","Always"],
+[101,10,"I know the group margin now. One year ago I did not.","Said","Engineer","11 May","Often"],
+[102,11,"Two people who joined with me have left for firms with more varied projects.","Said","Engineer, five years in","7 May","Rarely",1],
+[103,11,"The work I came for is now a smaller part of what I do.","Said","Graduate engineer","14 May","Often",1]
+];
+const VS={
+ 9:["Public clients moved to scoring that gives most of the marks to price.","A low bid wins. The cost of lost learning appears later, in another budget.","Each unit copies the bid that won last time."],
+ 2:["Utilisation targets were set for each unit.","The unit manager is measured on the hours of the unit.","New managers learn the targets from the managers before them."],
+ 3:["Fixed fees left no hours for a second option.","A reused design stays in budget. A new design that overruns is blamed.","Graduates learn it from the first refusal."],
+ 1:["Reviews were set up inside each project team.","A review that shows faults can harm the standing of the team.","Each region keeps its own folder. The folders are not shared."],
+ 8:["A person raised a risk and nothing happened.","To stay silent costs the person nothing. To repeat a risk costs standing.","New staff see who is listened to."],
+ 7:["The monthly report was designed to show progress.","A green status brings no questions.","Every project uses the same report form."],
+ 4:["The survey was added at close-out as a quality step.","No one is asked what changed because of the answers.","The answers stay with the account lead."],
+ 5:["One project lead wrote the hand-over with the client’s operators.","The client praised it. The unit earns fewer follow-on fees.","Two teams do it. No one has asked them how."],
+ 10:["The 2025 change to the ownership model.","The group result is now part of pay.","It spreads where team leaders talk about the group result."],
+ 6:["The practice networks.","Specialists like to be asked. Their targets do not count the time.","Graduates tell each other where to ask."],
+ 11:["People joined for the kind of project.","The projects still match what they joined for.","Not known."]
+};
+const FAILS=[["New ways are not tried","Where did this way of working start?"],["The wrong ways are rewarded","What makes it continue or stop?"],["What is learned does not spread","How does it spread, or why does it not spread?"]];
+const FAILOF={3:0,5:0,9:1,2:1,8:1,10:1,1:2,7:2,4:2,6:2};
+const TESTS=[
+ [0,"Ask every new joiner at six weeks what they notice.","People lead, one region","Started in December."],
+ [0,"Count how many clients check drawings by machine.","Account leads","Started in December."],
+ [1,"Ask ten more people in their first five years why they stay.","The person who gathers the observations","Six of ten asked. Five gave the kind of project as the reason."],
+ [1,"Ask five account leads about payment on performance.","Head of Growth","Two of five have heard the same request."],
+ [2,"Credit the hours of a loaned specialist to both units.","Regional director, one region","Six loans in the quarter. One loan in the quarter before."],
+ [2,"Add one question to the monthly report: what would the client say is going wrong?","Two unit managers","Three projects reported trouble one month earlier than before."],
+ [2,"One leader replies in writing to every risk raised, for one month.","One project director","Risks raised: fourteen. In the month before: four."],
+ [3,"Count answers to network questions as recognised work.","Practice lead, water","Tested in one practice. Two more practices have adopted it."]
+];
+const FREQ=["Always","Often","Rarely","First time"];
+const PG=["Leaders","Unit managers","Engineers and graduates","Clients"],PGN=[12,30,140,18];
+const REC={9:[80,85,70,90],2:[35,90,85,20],3:[20,45,85,62],1:[30,60,80,10],8:[15,40,85,25],7:[75,50,45,80],4:[25,40,35,85],5:[40,45,50,75],10:[85,70,45,5],6:[30,50,90,10],11:[35,40,80,15]};
+const LREC={30:[10,20,60,5],40:[30,25,5,45],41:[5,10,25,0],42:[15,20,30,10],43:[10,15,35,20],70:[10,10,5,40],71:[5,5,15,0],72:[20,15,5,35]};
+function recOf(o){if(o.p){return REC[o.p].map((v,i)=>Math.max(0,Math.min(100,v+jit(o.id,i+11))));}return LREC[o.id]||[0,0,0,0];}
+function barsHTML(arr){return arr.map((v,i)=>'<div class="rb"><span>'+PG[i]+'</span><span class="bar"><i style="width:'+v+'%"></i></span><span class="n">'+Math.round(v*PGN[i]/100)+" of "+PGN[i]+"</span></div>").join("");}
+function seenHTML(o){if(STAGE!==2)return"";return '<span class="sub">Who else has seen this · invented figures</span>'+barsHTML(recOf(o))+'<div class="seenbtns" id="seenbtns"><button type="button" data-seen="yes">I have seen this</button><button type="button" data-seen="no">I have not seen this</button><button type="button" data-seen="unsure">Not sure</button></div>';}
+function readingOf(r){const hi=r.map((v,i)=>v>=60?i:-1).filter(i=>i>=0);if(hi.length===4)return ["Every group has seen it",2];if(hi.length===1)return ["Only "+PG[hi[0]].toLowerCase()+" have seen it",0];if(hi.length===0)return ["No group has seen it widely",0];return ["Groups see it differently",1];}
+function drawSeen(){const rows=P.map(g=>({g,r:REC[g.id],rd:readingOf(REC[g.id])})).sort((a,b)=>b.rd[1]-a.rd[1]);
+  document.getElementById("seentable").innerHTML="<thead><tr><th>Behaviour</th>"+PG.map(x=>"<th>"+x+"</th>").join("")+"<th>What this shows</th></tr></thead><tbody>"+rows.map(x=>'<tr><td><button type="button" class="linkbtn" data-p="'+x.g.id+'">'+esc(x.g.name)+"</button></td>"+x.r.map(v=>'<td class="c"><div class="bar"><i style="width:'+v+'%"></i></div>'+v+"%</td>").join("")+'<td'+(x.rd[1]===2?' class="all"':"")+">"+x.rd[0]+"</td></tr>").join("")+"</tbody>";}
+function mk(a,st){const g=P.find(p=>p.id===a[1]);const against=!!a[7];const k=st===2?5:st===3?9:0;
+  const v=g.base.map((b,i)=>clamp((against?(g.dir==="miss"?100-b*0.6:b*0.5):b)+jit(a[0]+k,i+k)));
+  return {id:a[0],p:a[1],t:a[2],k:a[3],s:a[4],d:a[5]+(st===3?" 2027":" 2026"),freq:a[6]||null,against,level:g.level,v,st,by:st>=2?"the person who gave the observation":"The person who gathers the observations"};}
+const ALL=RAW.map(a=>mk([a[0],a[1],a[2],a[3],a[4],a[5],null,a[6]],1)).concat(RAW2.map(a=>mk(a,2))).concat(RAW3.map(a=>mk(a,3))).concat(LONE.map(l=>Object.assign({p:0,against:false,st:1,freq:null,by:"The person who gathers the observations"},l,{d:l.d+(l.st===3?" 2027":" 2026")})));
+P.forEach(p=>{p.vsr=VS[p.id];});
+let STAGE=1;let READ=1;let O=[];
+const LINKS=[[9,2],[2,3],[4,7],[7,8],[1,7],[10,2],[5,4],[6,1]];
+
+const CX={
+ 1:[8,"miss","The link with the client rests on price only."],2:[8,"miss","Price decides the link with the client."],3:[8,"miss","The client scores on price, so the two sides do not work the problem out together."],
+ 4:[2,"miss","The unit that lends carries the cost. The unit that borrows gets the reward."],5:[8,"miss","Two units did not coordinate."],6:[2,"miss","The unit measure still decides what the manager attends to."],7:[8,"work","Two units coordinated."],
+ 8:[7,"miss","The team could not decide to try another way."],9:[7,"miss","The fee decides the method. The engineer does not."],10:null,11:null,
+ 12:[4,"miss","Other teams cannot see what was learned."],13:[4,"miss","The lesson did not become visible outside the team."],14:[4,"miss","The register does not show current lessons."],15:[4,"work","People from every region can see what went wrong."],
+ 16:null,17:null,18:[4,"miss","The manager cannot see problems early."],
+ 19:[4,"miss","The leader could not see the problem before the client did."],20:[4,"miss","The report gives no way to make trouble visible."],21:[4,"miss","The status sheet did not show the real state."],
+ 22:[8,"miss","The firm and the client do not work the brief out together."],23:[8,"miss","What the client says does not reach the firm’s decisions."],24:[8,"miss","Most projects return no view from the client."],
+ 25:[8,"work","The firm and the client’s staff worked as one team."],26:[8,"work","The hand-over was made with the client’s staff."],27:[8,"work","Client staff took part in the review."],
+ 28:[8,"work","Offices in two countries coordinated in one day."],29:[8,"work","People use the network between offices."],
+ 32:[1,"work","The person sees the whole firm as their group."],33:[1,"work","The manager attends to the firm beyond the unit."],34:[1,"work","The meeting put the group first."],35:[1,"work","The person knows what the group is for."],36:[1,"work","The person knows what the group is for."],
+ 30:[2,"miss","The person carries a cost that the targets do not count."],40:null,41:[4,"miss","Useful work is not seen by other teams."],42:[7,"work","The person could decide, and was supported."],43:null
+};
+function codeOf(o){if(o.id in CX)return CX[o.id];if(o.p)return [pat(o.p).c[0],sign(o),""];if(o.x){const k=Object.keys(o.x)[0];return [Number(k),o.x[k],""];}return null;}
+const RULES=[null,
+ ["It shows whether people know which group they belong to, and what the group is for.","“The group bonus made the whole firm’s result feel like my business.”","“A specialist in another country replied that afternoon.” That concerns condition 8."],
+ ["It shows who gets the reward for a piece of work, and who carries the cost.","“If I lend my best hydrologist to another region, my numbers drop and theirs rise.”","“A request for a specialist waited three weeks.” That shows a delay. It does not show who is rewarded."],
+ ["It shows whether the people affected by a rule took part in making it.","“The new timesheet rule arrived by email. Nobody asked us.” (invented)","“I was told there were no hours for it.” That is a refusal. It is not a rule."],
+ ["It shows whether people can see what others do, and how the work is going.","“A project status sheet showed green in the month before a claim.”","“I stopped raising risks.” That concerns speaking up. It fits none of the eight."],
+ ["It shows what the group does when a person breaks an agreed way of working.","“A late timesheet gets a quiet word first. That usually works.” (invented)","“People bring me problems late.” That concerns condition 4."],
+ ["It shows what happens when people disagree, and whether the result is seen as fair.","“Two units both claimed the client. It took a year, and nobody thinks it was fair.” (invented)","“I stopped raising risks because nothing happened.” No disagreement is shown."],
+ ["It shows whether a team can decide how to do its own work.","“I suggested a different approach once. I was told there were no hours for it.”","“Our senior specialists publish new methods every year.” That does not show who decides."],
+ ["It shows how units, regions and clients work with each other.","“A request for a specialist from another unit waited three weeks for an answer.”","“My manager talks only about our unit’s utilisation.” That concerns condition 2."]
+];
+function band(o){const r=o.s.toLowerCase();if(r.includes("client"))return "Client";if(/records|register|meeting|review/.test(r))return "Seen or measured";if(r.includes("team leader"))return "Manager or lead";if(/director|regional leader/.test(r))return "Senior leader";if(/manager|lead/.test(r))return "Manager or lead";if(/graduate|new joiner/.test(r))return "Graduate or new joiner";return "Engineer or specialist";}
+const MONTHS={Jan:"January",Feb:"February",Mar:"March",Apr:"April",May:"May",Jun:"June",Jul:"July",Aug:"August",Sep:"September",Oct:"October",Nov:"November",Dec:"December"};
+function month(o){const m=o.d.split(" ");return m.length===3?(MONTHS[m[1]]||m[1])+" "+m[2]:o.d;}
+const srcL=o=>STAGE===0?band(o):o.s, dateL=o=>STAGE===0?month(o):o.d;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pat=id=>P.find(p=>p.id===id);
+const members=id=>O.filter(o=>o.p===id);
+const state=o=>o.p===0?"alone":(members(o.p).length>=3?"group":"pair");
+const stateWord={group:"In a group",pair:"In a pair",alone:"Single observation"};
+const sign=o=>{const d=pat(o.p).dir;return o.against?(d==="miss"?"work":"miss"):d;};
+const word={work:"Working well",miss:"Not working"};
+const quote=o=>o.k==="Said"?"“"+esc(o.t)+"”":esc(o.t);
+
+
+STAGE=0;O=ALL.filter(o=>o.st<=1);
+const FRAMING=[{"s": "Burnout, lost bids, slow work and teams that misjudge each other tend to share one root.", "h": "The problems are connected", "body": "<p>Most of the problems an organisation struggles with are not separate problems. Staff burn out or leave. Work takes more effort than it should. Teams misjudge each other. The organisation sees itself one way and its clients see it another. Bids are lost, new services do not appear, and the same failures repeat without anyone being able to say why. Each of these usually gets its own programme and its own fix.</p><p>They tend to share one root. An organisation is made of living people, and it behaves like a living system. It stays healthy by changing how it works as the world around it changes. Over time, every organisation builds up ways of working that once made good sense and now get in the way. These can be rules, rewards, habits of communication between the people who do the work and the people who lead it, or gaps between what a person is responsible for and what they have the authority to change. Each was a sensible answer to an old problem, and nobody is at fault for it. Together they stop the organisation from adapting, and the problems above are how that shows.</p><p>When the problems are fixed one at a time, the root stays in place and the fixes do not last. It helps more to see the whole pattern at once: what people do each day, why it makes sense to them, and how one habit feeds another. This tool exists to make that pattern visible.</p>"}, {"s": "A group thrives when what is good for each member and what is good for the whole point the same way.", "h": "The science behind it", "body": "<p>Evolutionary biologists have studied for decades what lets a group of individuals work as one capable whole, in cells, in insect colonies and in human groups. Their answer is consistent. A group thrives when what is good for each member and what is good for the whole point the same way. Where a person or a unit can gain at the expense of the whole, the group weakens. This work is called multilevel selection theory.</p><p>The same research names the conditions that keep the two aligned. They include a fair share of effort and reward, a say in decisions, the ability to see what is going on, and fair ways to settle disagreements. This gives a grounded way to explain why an unhelpful habit persists, and what would have to change for a better one to take its place.</p><p>Profit-sharing and employee ownership rest on the same belief: that people who share in the success of the whole will act for the whole. The tool shows where daily life in the organisation already matches that belief, and where older rules and rewards still pull against it.</p>"}, {"s": "An organisation whose people act as one can adapt. A regenerative organisation also leaves its people, its clients and its places more capable.", "h": "From adapting to regenerating", "body": "<p>An organisation whose people act as one can adapt, and that is the first step. The second step is what the work leaves behind. A regenerative organisation does more than keep itself going. Its work leaves its people, its clients, and the communities and places it works in more capable and more alive than before. That in turn is what keeps the organisation itself viable over time. The tool looks at both steps.</p>"}, {"s": "The difficulties and the openings live in the daily experience of people. So this starts with their words.", "h": "Why it starts with what people say", "body": "<p>The difficulties and the openings in an organisation live in the daily experience of the people in it. The tool therefore starts with what people say and do, in their own words. The structure around those words is there to organise them so that decisions can be made. It is a map, and the map is not the territory. It gives no scores and it has no end state. It shows a direction, and whether things are moving in that direction.</p><p>The tool also keeps what only one person has noticed. Change in any living system starts with variation: someone, somewhere, doing something differently. A single observation is often where the new information is. It may be a practice that already works in one team, or the first sign of a shift among clients.</p>"}, {"s": "Many conversations become something a board can look at, beside figures it already reports.", "h": "What a leader gets from it", "body": "<p>The tool turns many conversations into something a board can look at. It connects them to figures the board already reports. It points to small changes that can be tried and then checked.</p>"}];
+const SHORT=[null,"A shared purpose","Fair reward","A say in decisions","Seeing clearly","Early correction","Fair resolution","Room to decide","Working across units"];
+function condEvidence(i){const out=[];O.forEach(o=>{const c=codeOf(o);if(c&&c[0]===i)out.push({o,s:c[1]});});return out;}
+const few=ev=>ev.length<5||new Set(ev.map(e=>e.o.s)).size<4;
+const clsOf=o=>{const c=codeOf(o);return c?c[1]:"nf";};
+const CX0=500,CY0=292,R0=66,R1=226;
+function polar(r,deg){const a=(deg-90)*Math.PI/180;return [CX0+r*Math.cos(a),CY0+r*Math.sin(a)];}
+function wedge(i){const a0=(i-1)*45+1,a1=i*45-1;const [x0,y0]=polar(R1,a0),[x1,y1]=polar(R1,a1),[x2,y2]=polar(R0,a1),[x3,y3]=polar(R0,a0);return "M"+x0+" "+y0+"A"+R1+" "+R1+" 0 0 1 "+x1+" "+y1+"L"+x2+" "+y2+"A"+R0+" "+R0+" 0 0 0 "+x3+" "+y3+"Z";}
+const POS={};O.forEach(o=>{POS[o.id]={};});
+O.slice().sort((a,b)=>Date.parse(a.d)-Date.parse(b.d)).forEach((o,k)=>{POS[o.id].cloud=[185+(k%8)*90+jit(o.id,3),120+Math.floor(k/8)*92+jit(o.id,4)];POS[o.id].park=[130+k*19.5,598];});
+for(let i=1;i<=8;i++){const ev=condEvidence(i).sort((a,b)=>a.s===b.s?0:(a.s==="work"?-1:1));const mid=(i-1)*45+22.5;let k=0;
+  for(let r=98;r<=210&&k<ev.length;r+=27){const n=Math.max(1,Math.floor(r*0.56/22));for(let j=0;j<n&&k<ev.length;j++,k++){const off=n===1?0:(-15+30*j/(n-1));POS[ev[k].o.id].wheel=polar(r,mid+off);}}}
+const NF=O.filter(o=>!codeOf(o));NF.forEach((o,k)=>{POS[o.id].wheel=[500+(k-(NF.length-1)/2)*30,582];});
+const FIGS=[["Shared success","and collaboration",60,30],["Efficiency","and productivity",520,30],["Growing","the business",60,290],["Attracting and","keeping people",520,290]];
+function figOf(o){const c=codeOf(o);if([32,33,34].includes(o.id))return 0;if([35,36].includes(o.id))return 3;if(!c)return -1;return c[0]===2?0:c[0]===4?1:c[0]===8?2:c[0]===7?3:-1;}
+{const cnt=[0,0,0,0,0];O.forEach(o=>{const f=figOf(o);if(f<0){POS[o.id].fig=[200+cnt[4]*30,585];cnt[4]++;}else{const k=cnt[f]++;POS[o.id].fig=[FIGS[f][2]+34+(k%12)*31,FIGS[f][3]+112+Math.floor(k/12)*31];}});}
+const COLS=[["Variation",["People try","new ways"],190],["Selection",["What is rewarded","continues"],500],["Retention",["What continues","spreads"],810]];
+{const cnt=[0,0,0,0];O.forEach(o=>{const f=o.p?FAILOF[o.p]:undefined;if(f===undefined){POS[o.id].cols=[380+cnt[3]*30,585];cnt[3]++;}else{const k=cnt[f]++;POS[o.id].cols=[COLS[f][2]-75+(k%6)*30,175+Math.floor(k/6)*30];}});}
+const cv=document.getElementById("cv");
+function buildSVG(){let s="";
+  s+='<g class="layer" id="L_wheel">';
+  for(let i=1;i<=8;i++){const ev=condEvidence(i),mid=(i-1)*45+22.5,right=i<=4;const [lx,ly]=polar(R1+16,mid);
+    s+='<path class="wedge'+(ev.length?"":" none")+'" data-c="'+i+'" d="'+wedge(i)+'" tabindex="0" role="button" aria-label="'+esc(SHORT[i])+'"></path>';
+    s+='<text x="'+lx.toFixed(0)+'" y="'+(ly+6).toFixed(0)+'" text-anchor="'+(right?"start":"end")+'"><tspan class="wn">'+i+'</tspan><tspan class="wl" dx="8">'+esc(SHORT[i])+'</tspan><tspan class="fewt" x="'+lx.toFixed(0)+'" dy="19">'+(ev.length?(few(ev)?"too few to say":""):"no observation yet")+"</tspan></text>";}
+  s+='<circle cx="'+CX0+'" cy="'+CY0+'" r="'+(R0-8)+'" fill="#1E1C19"></circle><text x="'+CX0+'" y="'+(CY0+2)+'" text-anchor="middle" fill="#EDE5D8" font-family="Fraunces,Georgia,serif" font-size="30" font-weight="300" font-style="italic">eight</text><text x="'+CX0+'" y="'+(CY0+22)+'" text-anchor="middle" fill="#CCA97F" font-family="DM Sans,sans-serif" font-size="9" letter-spacing="2.5">CONDITIONS</text></g>';
+  s+='<g class="layer" id="L_nf"><text class="cap" x="500" y="612" text-anchor="middle">Fit none of the eight conditions</text></g>';
+  s+='<g class="layer" id="L_fig">'+FIGS.map((f,i)=>'<rect class="fbox" data-f="'+i+'" x="'+f[2]+'" y="'+f[3]+'" width="420" height="230" tabindex="0" role="button"></rect><text class="ft" x="'+(f[2]+22)+'" y="'+(f[3]+40)+'" pointer-events="none">'+f[0]+'<tspan x="'+(f[2]+22)+'" dy="26">'+f[1]+"</tspan></text>").join("")+'<text class="cap" x="60" y="590">Not placed</text></g>';
+  s+='<g class="layer" id="L_cols">'+COLS.map((c,i)=>'<text class="ct" x="'+c[2]+'" y="70" text-anchor="middle">'+c[0]+'</text><text class="ch" x="'+c[2]+'" y="104" text-anchor="middle">'+c[1][0]+'<tspan x="'+c[2]+'" dy="28">'+c[1][1]+"</tspan></text>"+(i?'<line x1="'+(c[2]-155)+'" y1="50" x2="'+(c[2]-155)+'" y2="520" stroke="rgba(242,237,231,.14)"></line>':"")).join("")+'<text class="cap" x="230" y="590">Not placed</text></g>';
+  s+=O.map(o=>'<circle class="d n" id="d'+o.id+'" data-o="'+o.id+'" r="9" cx="0" cy="0" tabindex="0" role="button" aria-label="'+esc(o.t)+'" style="transform:translate('+POS[o.id].cloud[0]+'px,'+POS[o.id].cloud[1]+'px);opacity:0"></circle>').join("");
+  cv.innerHTML=s;}
+function setDots(n){const key=n<=4?"cloud":n===5?"park":n<=9?"wheel":n===10?"fig":"cols";
+  O.forEach(o=>{const e=document.getElementById("d"+o.id),p=POS[o.id][key],c=clsOf(o);
+    e.style.transform="translate("+p[0].toFixed(1)+"px,"+p[1].toFixed(1)+"px)";
+    e.setAttribute("class","d "+(n<=5?"n":c));
+    e.style.opacity=n<=3?0:n===5?.35:(n===7&&c!=="work")?.12:(n===8&&c!=="miss")?.12:1;
+    e.style.pointerEvents=n<=3?"none":"auto";});
+  cv.dataset.s=n;}
+/* ---------- topography: L-system radial fractals, after the website ---------- */
+const Topo=(()=>{const canvas=document.getElementById("topo"),ctx=canvas.getContext("2d");const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let raf=null,start=null,bt=0,w=0,h=0,theme="stone",inst=[];
+  function mk(seed){let s=seed>>>0;return()=>{s+=0x6D2B79F5;let t=Math.imul(s^(s>>>15),1|s);t^=t+Math.imul(t^(t>>>7),61|t);return((t^(t>>>14))>>>0)/4294967296;};}
+  function expand(ax,rules,n){let s=ax;for(let i=0;i<n;i++){let t="";for(const ch of s)t+=rules[ch]??ch;s=t;}return s;}
+  const SYS=[{str:expand("X",{X:"F+[[X]-X]-F[-FX]+X",F:"FF"},5),angle:25},{str:expand("F",{F:"FF+[+F-F-F]-[-F+F+F]"},4),angle:22.5}];
+  SYS.forEach(s=>{s.f=(s.str.match(/F/g)||[]).length;});
+  const PAL={stone:[["160,138,108",.28],["184,149,106",.26],["122,139,111",.24],["175,148,90",.25],["145,132,105",.23]],dark:[["200,172,130",.3],["215,175,108",.28],["158,178,140",.26],["210,168,95",.27],["185,162,128",.25]]};
+  const BG={stone:"237,229,216",dark:"30,28,25"};
+  function seedInst(t){const rng=mk(t==="stone"?2371:9031);inst=[];const place=(count,cols,rows)=>{const cells=[...Array(cols*rows).keys()];for(let i=cells.length-1;i>0;i--){const j=rng()*(i+1)|0;[cells[i],cells[j]]=[cells[j],cells[i]];}return cells.slice(0,count).map(ci=>({x:(ci%cols)/cols+(1/cols)*(.2+rng()*.6),y:Math.floor(ci/cols)/rows+(1/rows)*(.2+rng()*.6)}));};
+    for(const p of place(2+(rng()*2|0),4,3))inst.push({sys:rng()<.5?0:1,x:p.x,y:p.y,sc:.75+rng()*.45,pal:rng()*5|0,ph:rng()*6.28,axes:rng()<.5?5:6,rot:rng()*360,bg:false});
+    for(const p of place(13+(rng()*5|0),6,5))inst.push({sys:rng()<.5?0:1,x:p.x,y:p.y,sc:.25+rng()*.25,pal:rng()*5|0,ph:rng()*6.28,axes:rng()<.5?5:6,rot:rng()*360,bg:true,a:.03+rng()*.09});}
+  function turtle(str,x,y,hd,step,ang,maxF){const toR=Math.PI/180;let a=hd*toR;const dA=ang*toR,st=[];let f=0;ctx.beginPath();ctx.moveTo(x,y);for(const c of str){if(c==="F"){if(f>=maxF)break;f++;x+=step*Math.cos(a);y+=step*Math.sin(a);ctx.lineTo(x,y);}else if(c==="+")a+=dA;else if(c==="-")a-=dA;else if(c==="[")st.push(x,y,a);else if(c==="]"){a=st.pop();y=st.pop();x=st.pop();ctx.moveTo(x,y);}}ctx.stroke();}
+  function grow(e){return e<2.5?(e/2.5)*.85:e<22.5?.85+((e-2.5)/20)*.15:1;}
+  function draw(e){ctx.fillStyle="rgb("+BG[theme]+")";ctx.fillRect(0,0,w,h);ctx.lineWidth=1;ctx.lineCap="round";ctx.lineJoin="round";const fr=grow(e),cell=Math.min(w/4,h/3);
+    for(const it of inst){const sys=SYS[it.sys],col=PAL[theme][it.pal],ox=it.x*w,oy=it.y*h,step=(cell*1.4/25)*it.sc,maxF=Math.floor(fr*sys.f),br=Math.sin(bt*.6+it.ph)*2.5;
+      const alpha=it.bg?it.a:Math.min(.015*Math.pow(it.sc/.5,3.2),.35);ctx.strokeStyle="rgba("+col[0]+","+alpha.toFixed(3)+")";
+      for(let ai=0;ai<it.axes;ai++)turtle(sys.str,ox,oy,(360/it.axes)*ai+it.rot,step,sys.angle+br,maxF);}}
+  function loop(ts){if(start===null)start=ts;draw((ts-start)/1000);bt+=.012;raf=requestAnimationFrame(loop);}
+  function resize(){const p=canvas.parentElement;w=canvas.width=p.offsetWidth;h=canvas.height=p.offsetHeight;}
+  function show(t){theme=t;seedInst(t);resize();cancelAnimationFrame(raf);start=null;canvas.classList.add("show");if(reduced)draw(999);else raf=requestAnimationFrame(loop);}
+  function hide(){canvas.classList.remove("show");cancelAnimationFrame(raf);raf=null;}
+  new ResizeObserver(()=>{if(canvas.classList.contains("show")){resize();if(reduced)draw(999);}}).observe(canvas.parentElement);
+  return {show,hide};})();
+/* ---------- panels ---------- */
+const bandsTable=()=>{const b={};O.forEach(o=>{b[band(o)]=(b[band(o)]||0)+1;});return '<table class="who">'+Object.keys(b).sort((x,y)=>b[y]-b[x]).map(k=>"<tr><td>"+k+"</td><td>"+b[k]+"</td></tr>").join("")+"</table>";};
+const months=()=>[...new Set(O.map(month))].join(" and ");
+const RO='<div class="ro" id="ro"><span class="label">Point at a dot</span><p class="small">The observation appears here. Select a dot to see its details.</p></div>';
+const KEY='<div class="key"><span><i></i> supports the condition · judged present</span><span><i class="miss"></i> works against it · judged absent</span><span><i class="nf"></i> fits none of the eight</span></div>';
+const SC=[null,
+ {t:"Title",full:1,topo:"stone",html:()=>'<div class="hero"><span class="label">October 2026</span><h1>Making sense of<br>how we <em>adapt</em>.</h1><p class="lede">This page holds '+O.length+' observations: things that people across the organisation said or did in '+months()+'. It sets each one beside eight conditions, drawn from Nobel Prize-winning research, that help a group to navigate change organically, as it emerges, and to grow through it. It shows where those conditions are present in daily work, and where they are not.</p><p class="note"><b>Every observation and placement on this page is invented</b> to show how the tool works. None describes a real organisation.</p></div>'},
+ {t:"Why this matters",full:1,html:()=>'<span class="label">Why this matters</span><div class="essay2">'+FRAMING.map(f=>'<h3>'+esc(f.h)+'</h3>'+f.body).join("")+'</div><p class="small">Sources for the science: Wilson and Sober, 1989, and Wilson, Ostrom and Cox, 2013. The research has critics, and it has been tested more in communities than in companies.</p>'},
+ {t:"Applying this to an organisation",full:1,html:()=>'<span class="label">Applying this research to an organisation</span><h2>What the organisation <em>already reports</em>.</h2><p class="muted">The research describes conditions under which a group adapts. Most organisations already report figures like these. This screen holds them, each with its source, beside the aim the leadership has set. The observations on the next screens sit beside both.</p><div class="figs"><div class="fig"><span class="label">Staff turnover</span><span class="n">—</span><span class="small">from the organisation’s own reporting</span></div><div class="fig"><span class="label">Operating margin</span><span class="n">—</span><span class="small">from the organisation’s own reporting</span></div><div class="fig"><span class="label">Sickness absence</span><span class="n">—</span><span class="small">from the organisation’s own reporting</span></div><div class="fig"><span class="label">Employees</span><span class="n">—</span><span class="small">from the organisation’s own reporting</span></div></div><div class="aim"><div><span class="label">The aim the leadership has set</span><blockquote>The aim, in the leadership’s own words.</blockquote></div><p>Most organisations also run staff surveys and wellbeing or risk assessments. A survey gives scores. The observations that follow give reasons, in the words of the people concerned.</p></div>'},
+ {t:"What was heard and seen",html:()=>'<span class="label">What was observed</span><h2>What was heard <em>and seen</em>.</h2><p class="muted">Each dot is one observation: something a person said, something that was seen, or a figure from the records. There are '+O.length+', from conversations in '+months()+'. Nothing is grouped or judged here.</p>'+RO+'<button type="button" class="btn" data-list="1">Read all '+O.length+" as a list</button>"+'<span class="label">Who gave them</span>'+bandsTable()+'<p class="todo">To be added: how people were chosen, who has not been heard, and that each person agreed to this use of their words.</p>'},
+ {t:"Eight conditions",html:()=>'<span class="label">The science</span><h2>Eight <em>conditions</em>.</h2><p class="muted">Elinor Ostrom studied long-lasting groups that manage a shared resource. She found eight conditions that those groups share. In 2009 she received the Nobel Memorial Prize in Economic Sciences.</p><p class="muted">Later work argues that the same conditions apply to groups of many kinds (Wilson, Ostrom and Cox, 2013). To apply them to how a company navigates change is a reasonable inference. It has not been tested directly.</p><div class="clist">'+SHORT.slice(1).map((n,i)=>'<button type="button" data-c="'+(i+1)+'"><b>'+(i+1)+"</b><span>"+esc(COND[i+1].n)+"</span></button>").join("")+"</div>"},
+ {t:"Through the eight conditions",html:()=>'<span class="label">The same observations, through the science</span><h2>Each observation, beside <em>one</em> condition.</h2><p class="muted">Each dot moves to the one condition it concerns. Green means the observation supports that condition: it was judged present. Rust means the observation works against it: it was judged absent. The judgement is one person’s reading, and each condition has a rule for it.</p>'+KEY+'<p class="small">'+NF.length+' observations fit none of the eight. They sit below the wheel. “Too few to say” means fewer than 5 observations or fewer than 4 sources.</p>'+RO+'<p class="todo">Select a condition to read its rule and its observations. Check by a second reader: not yet done.</p>'},
+ {t:"What already works",html:()=>'<span class="label">The same science, one side</span><h2>What already <em>works</em>.</h2><p class="muted">The observations that work against a condition fade. What remains in green is where the organisation already works in the way the research describes.</p><span class="label">Three examples</span>'+[25,15,42].map(id=>O.find(o=>o.id===id)).map(o=>'<button type="button" class="card" data-o="'+o.id+'"><span class="q">“'+esc(o.t)+'”</span><small>'+esc(band(o))+"</small></button>").join("")},
+ {t:"What may not be working",html:()=>'<span class="label">The same science, the other side</span><h2>What may <em>not</em> be working.</h2><p class="muted">Now the supporting observations fade. What remains in rust is where a condition was judged absent. The research expects that to make it harder for a group to adapt. Where a condition has too few observations to say, the wheel says so.</p><span class="label">Three examples</span>'+[4,21,8].map(id=>O.find(o=>o.id===id)).map(o=>'<button type="button" class="card" data-o="'+o.id+'"><span class="q">“'+esc(o.t)+'”</span><small>'+esc(band(o))+"</small></button>").join("")+'<p class="small">Nobody is at fault for these. Each behaviour once solved a problem for someone.</p>'},
+ {t:"What this suggests",html:()=>{let rows="";for(let i=1;i<=8;i++){const ev=condEvidence(i),w=ev.filter(e=>e.s==="work").length;rows+='<button type="button" data-c="'+i+'"><b>'+i+'</b><span>'+esc(SHORT[i])+'<br><span class="small">'+(ev.length?(ev.length+" observations: "+w+" present, "+(ev.length-w)+" absent"+(few(ev)?". Too few to say.":"")):"No observation yet. Nobody has looked.")+"</span></span></button>";}
+   return '<span class="label">The picture as a whole</span><h2>Where the organisation <em>may</em> be.</h2><p class="muted">All the dots together, by condition. Each line below counts one condition. The counts show where observations exist. They are not a score, and they come from one person’s conversations.</p><div class="clist">'+rows+'</div>';}},
+ {t:"Beside the goals the organisation has set",html:()=>'<span class="label">Back to the organisation’s own goals</span><h2>Beside the goals the organisation <em>has set</em>.</h2><p class="muted">Each box holds one goal of the kind most organisations set. With a real organisation, each box holds a line from its own strategy or annual report. The dots that move into a box are the observations whose condition bears on that line. The observations do not explain the figures. They show what people describe in the places where the goals are meant to be met.</p><div class="clist"><button type="button" data-f="0"><b>1</b><span>Shared success and collaboration<br><span class="small">Fair reward (2) and a shared purpose (1)</span></span></button><button type="button" data-f="1"><b>2</b><span>Efficiency and productivity<br><span class="small">Seeing clearly (4)</span></span></button><button type="button" data-f="2"><b>3</b><span>Growing the business<br><span class="small">Working across units (8)</span></span></button><button type="button" data-f="3"><b>4</b><span>Attracting and keeping people<br><span class="small">Room to decide (7) and a shared purpose (1)</span></span></button></div>'+RO},
+ {t:"How an organisation keeps adapting",dark:1,topo:"dark",html:()=>'<span class="label">Over time</span><h2>How an organisation keeps <em>adapting</em>.</h2><p class="muted">Evolutionary theory describes how a living system changes. People try different ways of working. The ways that are rewarded continue. What continues spreads until it is normal (Wilson, Hayes, Biglan and Embry, 2014).</p><p class="muted">The eight conditions are what let a group do these three things. Room to decide and a say in decisions let people try. Fair reward and seeing clearly decide what continues. Working across units and a shared purpose let it spread. That link is a reasonable inference from the research, and the dots show where the observations sit in the three steps.</p>'+KEY+RO+'<p>Seen this way, adapting is continuous. It has no end state and no score. It has a direction, and the observations show where that direction is already present.</p>'}
+];
+const N=SC.length-1;let cur=1;
+function go(n){cur=Math.max(1,Math.min(N,n));const sc=SC[cur],st=document.getElementById("stage"),app=document.getElementById("app");
+  st.classList.toggle("full",!!sc.full);app.classList.toggle("dark",!!sc.dark);
+  const p=document.getElementById("panel");p.innerHTML=sc.html();p.scrollTop=0;setDots(cur);
+  if(sc.topo)Topo.show(sc.topo);else Topo.hide();
+  document.getElementById("lbl").textContent=cur+" of "+N+" · "+sc.t;document.getElementById("toplbl").textContent=cur===1?"":sc.t;
+  document.getElementById("prev").disabled=cur===1;document.getElementById("next").disabled=cur===N;
+  document.getElementById("pips").innerHTML=SC.slice(1).map((s,i)=>'<button type="button" data-go="'+(i+1)+'" class="'+(i+1===cur?"on":"")+'" aria-label="'+esc(s.t)+'" title="'+esc(s.t)+'"></button>').join("");
+  try{history.replaceState(null,"","#s"+cur);}catch(e){}}
+const drawer=document.getElementById("drawer"),scrim=document.getElementById("scrim");let last=null;
+function open(html){last=document.activeElement;drawer.innerHTML='<button type="button" class="x" data-close="1" aria-label="Close">✕</button>'+html;drawer.hidden=false;scrim.hidden=false;drawer.scrollTop=0;drawer.querySelector(".x").focus();}
+function close(){drawer.hidden=true;scrim.hidden=true;if(last&&last.focus)last.focus();}
+const qb=(o,s)=>'<button type="button" class="bq '+(s==="work"?"work":"")+'" data-o="'+o.id+'"><span class="q">'+quote(o)+"</span><small>"+esc(band(o))+" · "+esc(o.k)+"</small></button>";
+function openObs(id){const o=O.find(x=>x.id===id),cd=codeOf(o),interp=cur>=6;
+  open('<span class="label">Observation</span><h2 class="q">'+quote(o)+"</h2><dl><dt>Kind</dt><dd>"+esc(o.k)+"</dd><dt>Source</dt><dd>"+esc(band(o))+"</dd><dt>Date</dt><dd>"+esc(month(o))+"</dd><dt>Where it was seen</dt><dd>"+LEVELS[o.level]+"</dd>"+(interp?"<dt>Condition it concerns</dt><dd>"+(cd?'<button type="button" class="lb" data-c="'+cd[0]+'">'+cd[0]+". "+esc(COND[cd[0]].n)+"</button><br>Judged "+(cd[1]==="work"?"present":"absent")+"."+(cd[2]?" Reason: "+esc(cd[2]):""):"It fits none of the eight conditions.")+"</dd>":"")+"</dl>");}
+function openCond(i){const c=COND[i],r=RULES[i],ev=condEvidence(i),w=ev.filter(e=>e.s==="work"),m=ev.filter(e=>e.s==="miss"),show=cur>=6;
+  const bands={};ev.forEach(e=>{const b=band(e.o);bands[b]=bands[b]||[0,0];bands[b][e.s==="work"?0:1]++;});
+  open('<span class="label">Condition '+i+" of 8</span><h2>"+esc(c.n)+"</h2><dl><dt>What the research found</dt><dd>"+esc(c.w)+"</dd><dt>Why it matters for change</dt><dd>"+esc(c.a)+"</dd><dt>Rule for the judgement</dt><dd>"+esc(r[0])+"<br>Fits: "+esc(r[1])+"<br>Does not fit: "+esc(r[2])+"</dd><dt>Name in the research</dt><dd>"+esc(c.r)+"</dd></dl>"+
+   (show?(ev.length?'<span class="sub">'+ev.length+(ev.length===1?" observation":" observations")+" from "+new Set(ev.map(e=>e.o.s)).size+" sources"+(few(ev)?" · too few to say":"")+'</span><div class="two"><div><span class="sub">Judged present</span>'+(w.map(e=>qb(e.o,"work")).join("")||'<p class="small">None.</p>')+'</div><div><span class="sub">Judged absent</span>'+(m.map(e=>qb(e.o,"miss")).join("")||'<p class="small">None.</p>')+'</div></div><span class="sub">Who described this</span><table><tr><th>Source</th><th>Present</th><th>Absent</th></tr>'+Object.keys(bands).map(b=>"<tr><td>"+b+"</td><td>"+bands[b][0]+"</td><td>"+bands[b][1]+"</td></tr>").join("")+'</table><p class="small">The numbers are small. They show who has spoken so far.</p>':'<p class="small">No observation concerns this condition yet. This means nobody has looked. It does not mean the condition is present.</p>'):""));}
+function openList(title,list,neutral){open('<span class="label">'+list.length+" observations</span><h2>"+esc(title)+"</h2>"+list.map(o=>qb(o,neutral?"":clsOf(o))).join(""));}
+function openAbout(){open('<span class="label">About this page</span><h2>About this page</h2><div class="essay"><p>This page sets observations from conversations inside an organisation beside eight conditions that research has found in groups that adapt well. It is a prototype. Every observation and placement on it is invented to show how the page works.</p><p>This page was made by <a href="https://www.ben-preston.com" target="_blank" rel="noopener">Ben Preston</a>.</p></div><dl><dt>Eight conditions</dt><dd>Wilson, Ostrom and Cox, 2013. Generalizing the core design principles for the efficacy of groups. <i>Journal of Economic Behavior &amp; Organization</i>, 90, S21–S32. Elinor Ostrom received the 2009 Nobel Memorial Prize in Economic Sciences for her analysis of economic governance, especially the commons.</dd><dt>Groups as living systems</dt><dd>Wilson and Sober, 1989. Reviving the superorganism. <i>Journal of Theoretical Biology</i>, 136, 337–356.</dd><dt>Three steps of adapting</dt><dd>Wilson, Hayes, Biglan and Embry, 2014. Evolving the future: toward a science of intentional change. <i>Behavioral and Brain Sciences</i>, 37, 395–416.</dd><dt>Made</dt><dd>October 2026. Set in Fraunces and DM Sans.</dd></dl>');}
+function openFraming(i){const f=FRAMING[i];open('<span class="label">Why this matters · '+(i+1)+" of "+FRAMING.length+"</span><h2>"+esc(f.h)+'</h2><div class="essay">'+f.body+"</div>");}
+document.addEventListener("click",e=>{
+  if(e.target===scrim){close();return;}
+  const b=e.target.closest("[data-close],[data-go],[data-fr],[data-list],[data-f],[data-o],[data-c]");if(!b)return;
+  if(b.dataset.close)close();
+  else if(b.dataset.go)go(+b.dataset.go);
+  else if(b.dataset.fr)openFraming(+b.dataset.fr);
+  else if(b.dataset.list)openList("What was heard and seen",O.slice().sort((x,y)=>Date.parse(x.d)-Date.parse(y.d)),true);
+  else if(b.dataset.f){const i=+b.dataset.f;openList(FIGS[i][0].replace("“","")+" "+FIGS[i][1].replace(/”.*/,""),O.filter(o=>figOf(o)===i));}
+  else if(b.dataset.o)openObs(+b.dataset.o);
+  else if(b.dataset.c)openCond(+b.dataset.c);});
+function ro(o){const el=document.getElementById("ro");if(!el)return;el.innerHTML='<span class="label">'+esc(band(o))+" · "+esc(o.k)+'</span><div class="t">'+quote(o)+"</div>";}
+document.addEventListener("mouseover",e=>{const d=e.target.closest&&e.target.closest(".d");if(d)ro(O.find(o=>o.id===+d.dataset.o));});
+document.addEventListener("focusin",e=>{const d=e.target.closest&&e.target.closest(".d");if(d)ro(O.find(o=>o.id===+d.dataset.o));});
+document.addEventListener("keydown",e=>{
+  if(!drawer.hidden){if(e.key==="Escape")close();return;}
+  const t=e.target;if((e.key==="Enter"||e.key===" ")&&t instanceof SVGElement){e.preventDefault();if(t.dataset.o)openObs(+t.dataset.o);else if(t.dataset.c)openCond(+t.dataset.c);else if(t.dataset.f)t.dispatchEvent(new MouseEvent("click",{bubbles:true}));return;}
+  if(e.key==="ArrowRight"||e.key==="PageDown"){e.preventDefault();go(cur+1);}else if(e.key==="ArrowLeft"||e.key==="PageUp"){e.preventDefault();go(cur-1);}});
+document.getElementById("prev").addEventListener("click",()=>go(cur-1));
+document.getElementById("next").addEventListener("click",()=>go(cur+1));
+document.getElementById("about").addEventListener("click",openAbout);
+buildSVG();
+const hh=/^#s(\d+)$/.exec(location.hash);go(hh?+hh[1]:1);
+</script>
+
+</body>
+</html>
